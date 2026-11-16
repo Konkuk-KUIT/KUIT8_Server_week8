@@ -1,9 +1,14 @@
 package webserver;
 
+import http.util.HttpRequestUtils;
+import http.util.CustomParser;
+import http.util.CustomParser.PathParserResult;
+
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -15,8 +20,9 @@ public class RequestHandler implements Runnable{
     public RequestHandler(Socket connection) {
         this.connection = connection;
     }
+    public MemoryUserController memoryUserController = MemoryUserController.getInstance();
 
-    public class RequestLine{
+    public static class RequestLine{
         String method;
         String path;
         String version;
@@ -36,32 +42,41 @@ public class RequestHandler implements Runnable{
             DataOutputStream dos = new DataOutputStream(out);
 
             String requestLine = br.readLine();
-            RequestLine request = requestLineParser(requestLine);
+            RequestLine request = CustomParser.requestLineParser(requestLine);
             log.log(Level.INFO, "Request Arrived. Method: " + request.method + ", Path: " + request.path + ", Version: " + request.version);
 
-            String path = routingPath(request.path);
+
+            PathParserResult pathParserResult = CustomParser.pathParser(request.path);
+            String path = routingPath(pathParserResult.path());
+            Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(pathParserResult.queryString());
+
+            if(!parameters.isEmpty()) {
+                if(request.method.equals("GET")) GetRouting(path, parameters);
+            }
+
             byte[] body = Files.readAllBytes(Path.of(path));
             response200Header(dos, body.length);
             responseBody(dos, body);
-
         } catch (IOException e) {
             log.log(Level.SEVERE,e.getMessage());
         }
     }
 
-    private RequestLine requestLineParser(String requestLine) throws IOException {
-        if(requestLine.isBlank()) throw new IOException("requestLine이 비어있습니다.");
-
-        String[] parts = requestLine.split(" ");
-        return new RequestLine(parts[0], parts[1], parts[2]);
-    }
-
-    private final String defaultPath = "/";
-    private final String webappPath = "webapp/";
-
     private String routingPath(String path){
+        String defaultPath = "/";
+        String webappPath = "webapp/";
+
         if (path.equals(defaultPath)) return webappPath + "index.html";
         else return webappPath + path;
+    }
+
+    private void GetRouting(String path, Map<String, String> parameters){
+        String username = parameters.get("userId");
+        String password = parameters.get("password");
+        String name = parameters.get("name");
+        String email = parameters.get("email");
+
+        memoryUserController.GetSignUp(username, password, name, email);
     }
 
     private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
