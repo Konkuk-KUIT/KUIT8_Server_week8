@@ -102,7 +102,7 @@ webapp/         # 실습용 HTML, CSS, JavaScript, 이미지
 먼저 `RequestHandler.run()`에서 동작을 완성합니다.
 
 - [x] `/`, `/index.html` 요청에 `webapp/index.html` 반환하기
-- [ ] 요청에 따라 다른 HTML 파일도 반환하기
+- [x] 요청에 따라 다른 HTML 파일도 반환하기
 - [ ] GET 회원가입: 쿼리 문자열로부터 User를 생성하고 저장하기
 - [ ] POST 회원가입: 폼의 method를 post로 바꾸고 본문으로부터 User를 생성하고 저장하기
 - [ ] 회원가입 성공 시 302 응답으로 `/index.html`에 리다이렉트하기

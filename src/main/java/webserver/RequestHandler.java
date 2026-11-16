@@ -37,8 +37,9 @@ public class RequestHandler implements Runnable{
 
             String requestLine = br.readLine();
             RequestLine request = requestLineParser(requestLine);
-            String path = routingPath(request.path);
+            log.log(Level.INFO, "Request Arrived. Method: " + request.method + ", Path: " + request.path + ", Version: " + request.version);
 
+            String path = routingPath(request.path);
             byte[] body = Files.readAllBytes(Path.of(path));
             response200Header(dos, body.length);
             responseBody(dos, body);
@@ -56,11 +57,10 @@ public class RequestHandler implements Runnable{
     }
 
     private final String defaultPath = "/";
-    private final String indexPath = "/index.html";
-    private final String webappPath = "webapp/index.html";
+    private final String webappPath = "webapp/";
 
     private String routingPath(String path){
-        if (path.equals(defaultPath) || path.equals(indexPath)) return webappPath;
+        if (path.equals(defaultPath)) return webappPath + "index.html";
         else return webappPath + path;
     }
 
