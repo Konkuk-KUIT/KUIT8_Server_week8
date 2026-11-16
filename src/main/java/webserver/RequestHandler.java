@@ -2,6 +2,9 @@ package webserver;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -13,6 +16,18 @@ public class RequestHandler implements Runnable{
         this.connection = connection;
     }
 
+    public class RequestLine{
+        String method;
+        String path;
+        String version;
+
+        public RequestLine(String method, String path, String version) {
+            this.method = method;
+            this.path = path;
+            this.version = version;
+        }
+    }
+
     @Override
     public void run() {
         log.log(Level.INFO, "New Client Connect! Connected IP : " + connection.getInetAddress() + ", Port : " + connection.getPort());
@@ -20,13 +35,33 @@ public class RequestHandler implements Runnable{
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
             DataOutputStream dos = new DataOutputStream(out);
 
-            byte[] body = "Hello World".getBytes();
+            String requestLine = br.readLine();
+            RequestLine request = requestLineParser(requestLine);
+            String path = routingPath(request.path);
+
+            byte[] body = Files.readAllBytes(Path.of(path));
             response200Header(dos, body.length);
             responseBody(dos, body);
 
         } catch (IOException e) {
             log.log(Level.SEVERE,e.getMessage());
         }
+    }
+
+    private RequestLine requestLineParser(String requestLine) throws IOException {
+        if(requestLine.isBlank()) throw new IOException("requestLine이 비어있습니다.");
+
+        String[] parts = requestLine.split(" ");
+        return new RequestLine(parts[0], parts[1], parts[2]);
+    }
+
+    private final String defaultPath = "/";
+    private final String indexPath = "/index.html";
+    private final String webappPath = "webapp/index.html";
+
+    private String routingPath(String path){
+        if (path.equals(defaultPath) || path.equals(indexPath)) return webappPath;
+        else return webappPath + path;
     }
 
     private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
