@@ -1,8 +1,10 @@
 package webserver;
 
 import http.util.HttpRequestUtils;
-import http.util.RequestParser;
-import http.util.RequestParser.PathParserResult;
+import http.util.HttpRequestParser;
+import http.util.HttpRequestParser.PathParserResult;
+import http.util.HttpResponseBuilder.HttpResponse;
+import http.util.HttpResponseBuilder;
 
 import java.io.*;
 import java.net.Socket;
@@ -28,14 +30,16 @@ public class RequestHandler implements Runnable{
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
             DataOutputStream dos = new DataOutputStream(out);
 
-            RequestParser.HttpRequest httpRequest = RequestParser.ParseRequest(br);
-            PathParserResult pathParserResult = RequestParser.pathParser(httpRequest.requestLine().path());
+            HttpRequestParser.HttpRequest httpRequest = HttpRequestParser.ParseRequest(br);
+            PathParserResult pathParserResult = HttpRequestParser.pathParser(httpRequest.requestLine().path());
 
             String parsedPath = routingPath(pathParserResult.path());
             String method = httpRequest.requestLine().method();
             Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(
                     method.equals("GET") ? pathParserResult.queryString() : httpRequest.body()
                     );
+
+            HttpResponse httpResponse = null;
 
             if(httpRequest.requestLine().path().equals("/user/signup") && method.equals("POST")) {
                 String userId = parameters.get("userId");
@@ -44,11 +48,13 @@ public class RequestHandler implements Runnable{
                 String email = parameters.get("email");
 
                 memoryUserController.GetSignUp(userId, password, name, email);
+                httpResponse = HttpResponseBuilder.response302("/index.html");
+            }else{
+                httpResponse = HttpResponseBuilder.response200(parsedPath);
             }
 
-            byte[] body = Files.readAllBytes(Path.of(parsedPath));
-            response200Header(dos, body.length);
-            responseBody(dos, body);
+            HttpResponseBuilder.buildHttpResponse(dos, httpResponse);
+            responseBody(dos, httpResponse.body());
         } catch (IOException e) {
             log.log(Level.SEVERE,e.getMessage());
         }
@@ -56,21 +62,10 @@ public class RequestHandler implements Runnable{
 
     private String routingPath(String path){
         String defaultPath = "/";
-        String webappPath = "webapp/";
+        String webappPath = "webapp";
 
-        if (path.equals(defaultPath)) return webappPath + "index.html";
+        if (path.equals(defaultPath)) return webappPath + "/index.html";
         else return webappPath + path;
-    }
-
-    private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
-        try {
-            dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-            dos.writeBytes("\r\n");
-        } catch (IOException e) {
-            log.log(Level.SEVERE, e.getMessage());
-        }
     }
 
     private void responseBody(DataOutputStream dos, byte[] body) {

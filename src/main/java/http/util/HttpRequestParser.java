@@ -8,7 +8,7 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class RequestParser {
+public class HttpRequestParser {
     private static final Logger log = Logger.getLogger(RequestHandler.class.getName());
 
     public record HttpRequest(RequestLine requestLine, Map<String, String> headers, String body) {
