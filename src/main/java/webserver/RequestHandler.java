@@ -1,14 +1,13 @@
 package webserver;
 
 import http.util.HttpRequestUtils;
-import http.util.CustomParser;
-import http.util.CustomParser.PathParserResult;
+import http.util.RequestParser;
+import http.util.RequestParser.PathParserResult;
 
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,18 +21,6 @@ public class RequestHandler implements Runnable{
     }
     public MemoryUserController memoryUserController = MemoryUserController.getInstance();
 
-    public static class RequestLine{
-        String method;
-        String path;
-        String version;
-
-        public RequestLine(String method, String path, String version) {
-            this.method = method;
-            this.path = path;
-            this.version = version;
-        }
-    }
-
     @Override
     public void run() {
         log.log(Level.INFO, "New Client Connect! Connected IP : " + connection.getInetAddress() + ", Port : " + connection.getPort());
@@ -41,20 +28,25 @@ public class RequestHandler implements Runnable{
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
             DataOutputStream dos = new DataOutputStream(out);
 
-            String requestLine = br.readLine();
-            RequestLine request = CustomParser.requestLineParser(requestLine);
-            log.log(Level.INFO, "Request Arrived. Method: " + request.method + ", Path: " + request.path + ", Version: " + request.version);
+            RequestParser.HttpRequest httpRequest = RequestParser.ParseRequest(br);
+            PathParserResult pathParserResult = RequestParser.pathParser(httpRequest.requestLine().path());
 
+            String parsedPath = routingPath(pathParserResult.path());
+            String method = httpRequest.requestLine().method();
+            Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(
+                    method.equals("GET") ? pathParserResult.queryString() : httpRequest.body()
+                    );
 
-            PathParserResult pathParserResult = CustomParser.pathParser(request.path);
-            String path = routingPath(pathParserResult.path());
-            Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(pathParserResult.queryString());
+            if(httpRequest.requestLine().path().equals("/user/signup") && method.equals("POST")) {
+                String userId = parameters.get("userId");
+                String password = parameters.get("password");
+                String name = parameters.get("name");
+                String email = parameters.get("email");
 
-            if(!parameters.isEmpty()) {
-                if(request.method.equals("GET")) GetRouting(path, parameters);
+                memoryUserController.GetSignUp(userId, password, name, email);
             }
 
-            byte[] body = Files.readAllBytes(Path.of(path));
+            byte[] body = Files.readAllBytes(Path.of(parsedPath));
             response200Header(dos, body.length);
             responseBody(dos, body);
         } catch (IOException e) {
@@ -68,15 +60,6 @@ public class RequestHandler implements Runnable{
 
         if (path.equals(defaultPath)) return webappPath + "index.html";
         else return webappPath + path;
-    }
-
-    private void GetRouting(String path, Map<String, String> parameters){
-        String username = parameters.get("userId");
-        String password = parameters.get("password");
-        String name = parameters.get("name");
-        String email = parameters.get("email");
-
-        memoryUserController.GetSignUp(username, password, name, email);
     }
 
     private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {

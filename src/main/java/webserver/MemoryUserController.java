@@ -14,12 +14,12 @@ public class MemoryUserController {
     }
 
     public void GetSignUp(
-            String username,
+            String userId,
             String password,
             String name,
             String email
     ){
-        User user = new User(username, password, name, email);
+        User user = new User(userId, password, name, email);
         MemoryUserRepository memoryUserRepository = MemoryUserRepository.getInstance();
 
         memoryUserRepository.addUser(user);
