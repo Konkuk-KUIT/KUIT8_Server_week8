@@ -88,6 +88,26 @@ public class RequestHandler implements Runnable{
                 return;
             }
 
+            // 로그인: 아이디로 사용자를 찾은 뒤 비밀번호를 비교합니다.
+            if ("POST".equals(method) && "/user/login".equals(path)) {
+                String formData = IOUtils.readData(br, contentLength);
+                Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(formData);
+                String userId = parameters.get("userId");
+                String password = parameters.get("password");
+                if (userId == null || password == null) {
+                    response302Header(dos, "/user/login_failed.html");
+                    return;
+                }
+
+                User user = MemoryUserRepository.getInstance().findUserById(userId);
+                if (user != null && password.equals(user.getPassword())) {
+                    response302Header(dos, "/index.html", "logined=true; Path=/");
+                } else {
+                    response302Header(dos, "/user/login_failed.html");
+                }
+                return;
+            }
+
             // 3. 첫 화면 주소 /는 /index.html로 처리합니다.
             if ("/".equals(path)) {
                 path = "/index.html";
@@ -122,8 +142,15 @@ public class RequestHandler implements Runnable{
     }
 
     private void response302Header(DataOutputStream dos, String path) throws IOException {
+        response302Header(dos, path, null);
+    }
+
+    private void response302Header(DataOutputStream dos, String path, String cookie) throws IOException {
         dos.writeBytes("HTTP/1.1 302 Found\r\n");
         dos.writeBytes("Location: " + path + "\r\n");
+        if (cookie != null) {
+            dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
+        }
         dos.writeBytes("Content-Length: 0\r\n");
         dos.writeBytes("Connection: close\r\n");
         dos.writeBytes("\r\n");
