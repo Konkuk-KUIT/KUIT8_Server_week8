@@ -2,6 +2,7 @@ package webserver;
 
 import db.MemoryUserRepository;
 import http.util.HttpRequestUtils;
+import http.util.IOUtils;
 import model.User;
 
 import java.io.*;
@@ -48,18 +49,28 @@ public class RequestHandler implements Runnable{
             }
             log.info("Request: " + method + " " + path);
 
-            // 2. 빈 줄까지가 요청 헤더입니다. 이번 단계에서는 읽어서 넘깁니다.
+            // 2. 빈 줄까지 헤더를 읽으며 본문 크기(Content-Length)를 찾습니다.
+            int contentLength = 0;
             String headerLine;
             while ((headerLine = br.readLine()) != null && !headerLine.isEmpty()) {
                 log.fine(headerLine);
+                String[] headerParts = headerLine.split(":", 2);
+                if (headerParts.length == 2 && "Content-Length".equalsIgnoreCase(headerParts[0].trim())) {
+                    contentLength = Integer.parseInt(headerParts[1].trim());
+                }
             }
             if (headerLine == null) {
                 return;
             }
 
-            // GET 회원가입: 입력값을 읽어 User를 만들고 메모리에 저장합니다.
-            if ("GET".equals(method) && "/user/signup".equals(path)) {
-                Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(queryString);
+            // 회원가입: GET은 URL의 입력값, POST는 요청 본문의 입력값을 사용합니다.
+            if ("/user/signup".equals(path) && ("GET".equals(method) || "POST".equals(method))) {
+                String formData = queryString;
+                if ("POST".equals(method)) {
+                    // 헤더를 읽은 것과 같은 br로 본문을 이어서 읽습니다.
+                    formData = IOUtils.readData(br, contentLength);
+                }
+                Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(formData);
                 String userId = parameters.get("userId");
                 String password = parameters.get("password");
                 String name = parameters.get("name");
@@ -72,7 +83,10 @@ public class RequestHandler implements Runnable{
                 MemoryUserRepository.getInstance().addUser(user);
                 log.info("회원가입 완료: " + user.getUserId());
 
-                path = "/index.html";
+                byte[] body = Files.readAllBytes(Path.of("webapp", "index.html"));
+                responseHeader(dos, "200 OK", body.length);
+                responseBody(dos, body);
+                return;
             }
 
             // 3. 첫 화면 주소 /는 /index.html로 처리합니다.
