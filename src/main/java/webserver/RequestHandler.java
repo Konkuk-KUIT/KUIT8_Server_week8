@@ -83,9 +83,8 @@ public class RequestHandler implements Runnable{
                 MemoryUserRepository.getInstance().addUser(user);
                 log.info("회원가입 완료: " + user.getUserId());
 
-                byte[] body = Files.readAllBytes(Path.of("webapp", "index.html"));
-                responseHeader(dos, "200 OK", body.length);
-                responseBody(dos, body);
+                // 브라우저가 /index.html을 새로 요청하도록 안내합니다.
+                response302Header(dos, "/index.html");
                 return;
             }
 
@@ -120,6 +119,15 @@ public class RequestHandler implements Runnable{
         } catch (IOException | IllegalArgumentException e) {
             log.log(Level.SEVERE,e.getMessage());
         }
+    }
+
+    private void response302Header(DataOutputStream dos, String path) throws IOException {
+        dos.writeBytes("HTTP/1.1 302 Found\r\n");
+        dos.writeBytes("Location: " + path + "\r\n");
+        dos.writeBytes("Content-Length: 0\r\n");
+        dos.writeBytes("Connection: close\r\n");
+        dos.writeBytes("\r\n");
+        dos.flush();
     }
 
     private void responseHeader(DataOutputStream dos, String status, int lengthOfBodyContent) throws IOException {
