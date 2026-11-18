@@ -3,13 +3,12 @@ package webserver;
 import db.MemoryUserRepository;
 import http.HttpMethod;
 import http.HttpRequest;
-import http.HttpStatus;
+import http.HttpResponse;
 import model.User;
 
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.logging.Level;
@@ -29,7 +28,7 @@ public class RequestHandler implements Runnable{
         try (Socket socket = connection;
              InputStream in = socket.getInputStream(); OutputStream out = socket.getOutputStream()){
             BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-            DataOutputStream dos = new DataOutputStream(out);
+            HttpResponse response = new HttpResponse(out);
 
             HttpRequest request = HttpRequest.from(br);
             if (request == null) {
@@ -56,7 +55,7 @@ public class RequestHandler implements Runnable{
                 log.info("회원가입 완료: " + user.getUserId());
 
                 // 브라우저가 /index.html을 새로 요청하도록 안내합니다.
-                response302Header(dos, "/index.html");
+                response.redirect("/index.html");
                 return;
             }
 
@@ -66,15 +65,15 @@ public class RequestHandler implements Runnable{
                 String userId = parameters.get("userId");
                 String password = parameters.get("password");
                 if (userId == null || password == null) {
-                    response302Header(dos, "/user/login_failed.html");
+                    response.redirect("/user/login_failed.html");
                     return;
                 }
 
                 User user = MemoryUserRepository.getInstance().findUserById(userId);
                 if (user != null && password.equals(user.getPassword())) {
-                    response302Header(dos, "/index.html", "logined=true; Path=/");
+                    response.redirect("/index.html", "logined=true; Path=/");
                 } else {
-                    response302Header(dos, "/user/login_failed.html");
+                    response.redirect("/user/login_failed.html");
                 }
                 return;
             }
@@ -88,69 +87,26 @@ public class RequestHandler implements Runnable{
                 path = "/user/list.html";
             }
 
-            // 4. HTML 또는 CSS 조회 요청이면 주소에 맞는 파일을 webapp에서 찾습니다.
+            // 4. 목록 접근 허용 여부를 결정하고, 파일 응답은 HttpResponse에 맡깁니다.
             if (method == HttpMethod.GET && path.startsWith("/")
                     && (path.endsWith(".html") || path.endsWith(".css"))) {
-                Path webRoot = Path.of("webapp").toAbsolutePath().normalize();
-                // 맨 앞 /를 떼면 /user/form.html -> user/form.html입니다.
-                Path filePath = webRoot.resolve(path.substring(1)).normalize();
-
-                boolean isUserList = filePath.equals(webRoot.resolve("user/list.html"));
-
-                if (filePath.startsWith(webRoot) && Files.isRegularFile(filePath)) {
-                    if (isUserList && !logined) {
-                        response302Header(dos, "/user/login.html");
-                        return;
-                    }
-                    byte[] body = Files.readAllBytes(filePath);
-
-                    String contentType = "text/html;charset=utf-8";
-                    if (path.endsWith(".css")) {
-                        contentType = "text/css";
-                    }
-                    responseHeader(dos, HttpStatus.OK, contentType, body.length);
-                    responseBody(dos, body);
+                // ../이 포함된 경로도 정리한 뒤 목록 파일인지 확인합니다.
+                Path relativePath = Path.of(path.substring(1)).normalize();
+                boolean isUserList = relativePath.equals(Path.of("user", "list.html"));
+                if (isUserList && !logined) {
+                    response.redirect("/user/login.html");
                     return;
                 }
+                response.forward(path);
+                return;
             }
 
             // 아직 구현하지 않은 경로는 404(찾을 수 없음)로 응답합니다.
-            byte[] body = "Not Found".getBytes(StandardCharsets.UTF_8);
-            responseHeader(dos, HttpStatus.NOT_FOUND, "text/html;charset=utf-8", body.length);
-            responseBody(dos, body);
+            response.notFound();
 
         } catch (IOException | IllegalArgumentException e) {
             log.log(Level.SEVERE,e.getMessage());
         }
-    }
-
-    private void response302Header(DataOutputStream dos, String path) throws IOException {
-        response302Header(dos, path, null);
-    }
-
-    private void response302Header(DataOutputStream dos, String path, String cookie) throws IOException {
-        dos.writeBytes("HTTP/1.1 " + HttpStatus.FOUND.getStatusLine() + "\r\n");
-        dos.writeBytes("Location: " + path + "\r\n");
-        if (cookie != null) {
-            dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
-        }
-        dos.writeBytes("Content-Length: 0\r\n");
-        dos.writeBytes("Connection: close\r\n");
-        dos.writeBytes("\r\n");
-        dos.flush();
-    }
-
-    private void responseHeader(DataOutputStream dos, HttpStatus status, String contentType, int lengthOfBodyContent) throws IOException {
-        dos.writeBytes("HTTP/1.1 " + status.getStatusLine() + "\r\n");
-        dos.writeBytes("Content-Type: " + contentType + "\r\n");
-        dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-        dos.writeBytes("Connection: close\r\n");
-        dos.writeBytes("\r\n");
-    }
-
-    private void responseBody(DataOutputStream dos, byte[] body) throws IOException {
-        dos.write(body, 0, body.length);
-        dos.flush();
     }
 
 }
