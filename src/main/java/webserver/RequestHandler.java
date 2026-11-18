@@ -1,10 +1,15 @@
 package webserver;
 
+import db.MemoryUserRepository;
+import http.util.HttpRequestUtils;
+import model.User;
+
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,15 +34,19 @@ public class RequestHandler implements Runnable{
             if (requestLine == null || requestLine.isBlank()) {
                 return;
             }
-            log.info("Request: " + requestLine);
-
             String[] requestParts = requestLine.split(" ", 3);
             if (requestParts.length != 3) {
                 return;
             }
             String method = requestParts[0];
-            // 쿼리 문자열(? 뒤의 값)을 제외한 요청 경로입니다.
-            String path = requestParts[1].split("\\?", 2)[0];
+            // ? 앞의 경로와 ? 뒤의 입력값(쿼리 문자열)을 나눠 보관합니다.
+            String[] urlParts = requestParts[1].split("\\?", 2);
+            String path = urlParts[0];
+            String queryString = "";
+            if (urlParts.length == 2) {
+                queryString = urlParts[1];
+            }
+            log.info("Request: " + method + " " + path);
 
             // 2. 빈 줄까지가 요청 헤더입니다. 이번 단계에서는 읽어서 넘깁니다.
             String headerLine;
@@ -46,6 +55,24 @@ public class RequestHandler implements Runnable{
             }
             if (headerLine == null) {
                 return;
+            }
+
+            // GET 회원가입: 입력값을 읽어 User를 만들고 메모리에 저장합니다.
+            if ("GET".equals(method) && "/user/signup".equals(path)) {
+                Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(queryString);
+                String userId = parameters.get("userId");
+                String password = parameters.get("password");
+                String name = parameters.get("name");
+                String email = parameters.get("email");
+                if (userId == null || password == null || name == null || email == null) {
+                    throw new IllegalArgumentException("회원가입 항목이 누락되었습니다.");
+                }
+
+                User user = new User(userId, password, name, email);
+                MemoryUserRepository.getInstance().addUser(user);
+                log.info("회원가입 완료: " + user.getUserId());
+
+                path = "/index.html";
             }
 
             // 3. 첫 화면 주소 /는 /index.html로 처리합니다.
