@@ -49,14 +49,22 @@ public class RequestHandler implements Runnable{
             }
             log.info("Request: " + method + " " + path);
 
-            // 2. 빈 줄까지 헤더를 읽으며 본문 크기(Content-Length)를 찾습니다.
+            // 2. 헤더에서 본문 크기와 로그인 쿠키를 확인합니다.
             int contentLength = 0;
+            boolean logined = false;
             String headerLine;
             while ((headerLine = br.readLine()) != null && !headerLine.isEmpty()) {
                 log.fine(headerLine);
                 String[] headerParts = headerLine.split(":", 2);
                 if (headerParts.length == 2 && "Content-Length".equalsIgnoreCase(headerParts[0].trim())) {
                     contentLength = Integer.parseInt(headerParts[1].trim());
+                } else if (headerParts.length == 2 && "Cookie".equalsIgnoreCase(headerParts[0].trim())) {
+                    for (String cookie : headerParts[1].split(";")) {
+                        String[] cookieParts = cookie.trim().split("=", 2);
+                        if (cookieParts.length == 2 && "logined".equals(cookieParts[0].trim())) {
+                            logined = "true".equals(cookieParts[1].trim());
+                        }
+                    }
                 }
             }
             if (headerLine == null) {
@@ -112,6 +120,10 @@ public class RequestHandler implements Runnable{
             if ("/".equals(path)) {
                 path = "/index.html";
             }
+            // User List 버튼 주소도 실제 목록 HTML 경로로 연결합니다.
+            if ("GET".equals(method) && "/user/userList".equals(path)) {
+                path = "/user/list.html";
+            }
 
             // 4. HTML 조회 요청이면 주소에 맞는 파일을 webapp에서 찾습니다.
             if ("GET".equals(method) && path.startsWith("/") && path.endsWith(".html")) {
@@ -119,11 +131,13 @@ public class RequestHandler implements Runnable{
                 // 맨 앞 /를 떼면 /user/form.html -> user/form.html입니다.
                 Path filePath = webRoot.resolve(path.substring(1)).normalize();
 
-                // 사용자 목록은 요구사항 6에서 로그인 검사와 함께 연결합니다.
                 boolean isUserList = filePath.equals(webRoot.resolve("user/list.html"));
 
-                // webapp 안에 실제로 있는 파일인지 확인한 뒤 내용을 보냅니다.
-                if (filePath.startsWith(webRoot) && !isUserList && Files.isRegularFile(filePath)) {
+                if (filePath.startsWith(webRoot) && Files.isRegularFile(filePath)) {
+                    if (isUserList && !logined) {
+                        response302Header(dos, "/user/login.html");
+                        return;
+                    }
                     byte[] body = Files.readAllBytes(filePath);
                     responseHeader(dos, "200 OK", body.length);
                     responseBody(dos, body);
