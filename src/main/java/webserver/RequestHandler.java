@@ -1,6 +1,8 @@
 package webserver;
 
 import db.MemoryUserRepository;
+import http.HttpMethod;
+import http.HttpStatus;
 import http.util.HttpRequestUtils;
 import http.util.IOUtils;
 import model.User;
@@ -39,7 +41,7 @@ public class RequestHandler implements Runnable{
             if (requestParts.length != 3) {
                 return;
             }
-            String method = requestParts[0];
+            HttpMethod method = HttpMethod.from(requestParts[0]);
             // ? 앞의 경로와 ? 뒤의 입력값(쿼리 문자열)을 나눠 보관합니다.
             String[] urlParts = requestParts[1].split("\\?", 2);
             String path = urlParts[0];
@@ -47,7 +49,7 @@ public class RequestHandler implements Runnable{
             if (urlParts.length == 2) {
                 queryString = urlParts[1];
             }
-            log.info("Request: " + method + " " + path);
+            log.info("Request: " + requestParts[0] + " " + path);
 
             // 2. 헤더에서 본문 크기와 로그인 쿠키를 확인합니다.
             int contentLength = 0;
@@ -72,9 +74,9 @@ public class RequestHandler implements Runnable{
             }
 
             // 회원가입: GET은 URL의 입력값, POST는 요청 본문의 입력값을 사용합니다.
-            if ("/user/signup".equals(path) && ("GET".equals(method) || "POST".equals(method))) {
+            if ("/user/signup".equals(path) && (method == HttpMethod.GET || method == HttpMethod.POST)) {
                 String formData = queryString;
-                if ("POST".equals(method)) {
+                if (method == HttpMethod.POST) {
                     // 헤더를 읽은 것과 같은 br로 본문을 이어서 읽습니다.
                     formData = IOUtils.readData(br, contentLength);
                 }
@@ -97,7 +99,7 @@ public class RequestHandler implements Runnable{
             }
 
             // 로그인: 아이디로 사용자를 찾은 뒤 비밀번호를 비교합니다.
-            if ("POST".equals(method) && "/user/login".equals(path)) {
+            if (method == HttpMethod.POST && "/user/login".equals(path)) {
                 String formData = IOUtils.readData(br, contentLength);
                 Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(formData);
                 String userId = parameters.get("userId");
@@ -121,12 +123,12 @@ public class RequestHandler implements Runnable{
                 path = "/index.html";
             }
             // User List 버튼 주소도 실제 목록 HTML 경로로 연결합니다.
-            if ("GET".equals(method) && "/user/userList".equals(path)) {
+            if (method == HttpMethod.GET && "/user/userList".equals(path)) {
                 path = "/user/list.html";
             }
 
             // 4. HTML 또는 CSS 조회 요청이면 주소에 맞는 파일을 webapp에서 찾습니다.
-            if ("GET".equals(method) && path.startsWith("/")
+            if (method == HttpMethod.GET && path.startsWith("/")
                     && (path.endsWith(".html") || path.endsWith(".css"))) {
                 Path webRoot = Path.of("webapp").toAbsolutePath().normalize();
                 // 맨 앞 /를 떼면 /user/form.html -> user/form.html입니다.
@@ -145,7 +147,7 @@ public class RequestHandler implements Runnable{
                     if (path.endsWith(".css")) {
                         contentType = "text/css";
                     }
-                    responseHeader(dos, "200 OK", contentType, body.length);
+                    responseHeader(dos, HttpStatus.OK, contentType, body.length);
                     responseBody(dos, body);
                     return;
                 }
@@ -153,7 +155,7 @@ public class RequestHandler implements Runnable{
 
             // 아직 구현하지 않은 경로는 404(찾을 수 없음)로 응답합니다.
             byte[] body = "Not Found".getBytes(StandardCharsets.UTF_8);
-            responseHeader(dos, "404 Not Found", "text/html;charset=utf-8", body.length);
+            responseHeader(dos, HttpStatus.NOT_FOUND, "text/html;charset=utf-8", body.length);
             responseBody(dos, body);
 
         } catch (IOException | IllegalArgumentException e) {
@@ -166,7 +168,7 @@ public class RequestHandler implements Runnable{
     }
 
     private void response302Header(DataOutputStream dos, String path, String cookie) throws IOException {
-        dos.writeBytes("HTTP/1.1 302 Found\r\n");
+        dos.writeBytes("HTTP/1.1 " + HttpStatus.FOUND.getStatusLine() + "\r\n");
         dos.writeBytes("Location: " + path + "\r\n");
         if (cookie != null) {
             dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
@@ -177,8 +179,8 @@ public class RequestHandler implements Runnable{
         dos.flush();
     }
 
-    private void responseHeader(DataOutputStream dos, String status, String contentType, int lengthOfBodyContent) throws IOException {
-        dos.writeBytes("HTTP/1.1 " + status + "\r\n");
+    private void responseHeader(DataOutputStream dos, HttpStatus status, String contentType, int lengthOfBodyContent) throws IOException {
+        dos.writeBytes("HTTP/1.1 " + status.getStatusLine() + "\r\n");
         dos.writeBytes("Content-Type: " + contentType + "\r\n");
         dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
         dos.writeBytes("Connection: close\r\n");
