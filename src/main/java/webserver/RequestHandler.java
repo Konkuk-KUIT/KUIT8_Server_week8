@@ -125,8 +125,9 @@ public class RequestHandler implements Runnable{
                 path = "/user/list.html";
             }
 
-            // 4. HTML 조회 요청이면 주소에 맞는 파일을 webapp에서 찾습니다.
-            if ("GET".equals(method) && path.startsWith("/") && path.endsWith(".html")) {
+            // 4. HTML 또는 CSS 조회 요청이면 주소에 맞는 파일을 webapp에서 찾습니다.
+            if ("GET".equals(method) && path.startsWith("/")
+                    && (path.endsWith(".html") || path.endsWith(".css"))) {
                 Path webRoot = Path.of("webapp").toAbsolutePath().normalize();
                 // 맨 앞 /를 떼면 /user/form.html -> user/form.html입니다.
                 Path filePath = webRoot.resolve(path.substring(1)).normalize();
@@ -139,7 +140,12 @@ public class RequestHandler implements Runnable{
                         return;
                     }
                     byte[] body = Files.readAllBytes(filePath);
-                    responseHeader(dos, "200 OK", body.length);
+
+                    String contentType = "text/html;charset=utf-8";
+                    if (path.endsWith(".css")) {
+                        contentType = "text/css";
+                    }
+                    responseHeader(dos, "200 OK", contentType, body.length);
                     responseBody(dos, body);
                     return;
                 }
@@ -147,7 +153,7 @@ public class RequestHandler implements Runnable{
 
             // 아직 구현하지 않은 경로는 404(찾을 수 없음)로 응답합니다.
             byte[] body = "Not Found".getBytes(StandardCharsets.UTF_8);
-            responseHeader(dos, "404 Not Found", body.length);
+            responseHeader(dos, "404 Not Found", "text/html;charset=utf-8", body.length);
             responseBody(dos, body);
 
         } catch (IOException | IllegalArgumentException e) {
@@ -171,10 +177,9 @@ public class RequestHandler implements Runnable{
         dos.flush();
     }
 
-    private void responseHeader(DataOutputStream dos, String status, int lengthOfBodyContent) throws IOException {
+    private void responseHeader(DataOutputStream dos, String status, String contentType, int lengthOfBodyContent) throws IOException {
         dos.writeBytes("HTTP/1.1 " + status + "\r\n");
-        dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-        // 문자 수가 아니라 실제 전송할 바이트 수를 알려줍니다.
+        dos.writeBytes("Content-Type: " + contentType + "\r\n");
         dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
         dos.writeBytes("Connection: close\r\n");
         dos.writeBytes("\r\n");
