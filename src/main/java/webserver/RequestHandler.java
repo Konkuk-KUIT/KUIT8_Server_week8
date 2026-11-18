@@ -2,9 +2,8 @@ package webserver;
 
 import db.MemoryUserRepository;
 import http.HttpMethod;
+import http.HttpRequest;
 import http.HttpStatus;
-import http.util.HttpRequestUtils;
-import http.util.IOUtils;
 import model.User;
 
 import java.io.*;
@@ -32,55 +31,18 @@ public class RequestHandler implements Runnable{
             BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
             DataOutputStream dos = new DataOutputStream(out);
 
-            // 1. 요청 첫 줄 예시: GET /index.html HTTP/1.1
-            String requestLine = br.readLine();
-            if (requestLine == null || requestLine.isBlank()) {
+            HttpRequest request = HttpRequest.from(br);
+            if (request == null) {
                 return;
             }
-            String[] requestParts = requestLine.split(" ", 3);
-            if (requestParts.length != 3) {
-                return;
-            }
-            HttpMethod method = HttpMethod.from(requestParts[0]);
-            // ? 앞의 경로와 ? 뒤의 입력값(쿼리 문자열)을 나눠 보관합니다.
-            String[] urlParts = requestParts[1].split("\\?", 2);
-            String path = urlParts[0];
-            String queryString = "";
-            if (urlParts.length == 2) {
-                queryString = urlParts[1];
-            }
-            log.info("Request: " + requestParts[0] + " " + path);
-
-            // 2. 헤더에서 본문 크기와 로그인 쿠키를 확인합니다.
-            int contentLength = 0;
-            boolean logined = false;
-            String headerLine;
-            while ((headerLine = br.readLine()) != null && !headerLine.isEmpty()) {
-                log.fine(headerLine);
-                String[] headerParts = headerLine.split(":", 2);
-                if (headerParts.length == 2 && "Content-Length".equalsIgnoreCase(headerParts[0].trim())) {
-                    contentLength = Integer.parseInt(headerParts[1].trim());
-                } else if (headerParts.length == 2 && "Cookie".equalsIgnoreCase(headerParts[0].trim())) {
-                    for (String cookie : headerParts[1].split(";")) {
-                        String[] cookieParts = cookie.trim().split("=", 2);
-                        if (cookieParts.length == 2 && "logined".equals(cookieParts[0].trim())) {
-                            logined = "true".equals(cookieParts[1].trim());
-                        }
-                    }
-                }
-            }
-            if (headerLine == null) {
-                return;
-            }
+            HttpMethod method = request.getMethod();
+            String path = request.getPath();
+            boolean logined = "true".equals(request.getCookie("logined"));
+            log.info("Request: " + method + " " + path);
 
             // 회원가입: GET은 URL의 입력값, POST는 요청 본문의 입력값을 사용합니다.
             if ("/user/signup".equals(path) && (method == HttpMethod.GET || method == HttpMethod.POST)) {
-                String formData = queryString;
-                if (method == HttpMethod.POST) {
-                    // 헤더를 읽은 것과 같은 br로 본문을 이어서 읽습니다.
-                    formData = IOUtils.readData(br, contentLength);
-                }
-                Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(formData);
+                Map<String, String> parameters = request.getParameters();
                 String userId = parameters.get("userId");
                 String password = parameters.get("password");
                 String name = parameters.get("name");
@@ -100,8 +62,7 @@ public class RequestHandler implements Runnable{
 
             // 로그인: 아이디로 사용자를 찾은 뒤 비밀번호를 비교합니다.
             if (method == HttpMethod.POST && "/user/login".equals(path)) {
-                String formData = IOUtils.readData(br, contentLength);
-                Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(formData);
+                Map<String, String> parameters = request.getParameters();
                 String userId = parameters.get("userId");
                 String password = parameters.get("password");
                 if (userId == null || password == null) {
