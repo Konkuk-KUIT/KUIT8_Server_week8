@@ -55,7 +55,15 @@ public class HttpResponseBuilder {
 
         HttpResponse httpResponse = new HttpResponse(stautsLine, headers, body);
 
-        httpResponse.addHeader("Content-Type", "text/html; charset=utf-8");
+        String contentType;
+
+        if (parsedPath.endsWith(".css")) {
+            contentType = "text/css; charset=utf-8";
+        } else {
+            contentType = "text/html; charset=utf-8";
+        }
+
+        httpResponse.addHeader("Content-Type", contentType);
         httpResponse.addHeader("Content-Length", String.valueOf(body.length));
 
         return httpResponse;
