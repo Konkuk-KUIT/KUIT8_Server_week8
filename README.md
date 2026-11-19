@@ -106,9 +106,9 @@ webapp/         # 실습용 HTML, CSS, JavaScript, 이미지
 - [x] GET 회원가입: 쿼리 문자열로부터 User를 생성하고 저장하기
 - [x] POST 회원가입: 폼의 method를 post로 바꾸고 본문으로부터 User를 생성하고 저장하기
 - [x] 회원가입 성공 시 302 응답으로 `/index.html`에 리다이렉트하기
-- [ ] 아이디로 사용자를 조회하고 비밀번호를 비교하여 로그인 성공·실패 처리하기
-- [ ] 로그인 성공 응답에 `Set-Cookie: logined=true; Path=/`를 넣고 `/index.html`로 리다이렉트하기
-- [ ] 로그인 실패 시 `/user/login_failed.html`로 리다이렉트하기
+- [x] 아이디로 사용자를 조회하고 비밀번호를 비교하여 로그인 성공·실패 처리하기
+- [x] 로그인 성공 응답에 `Set-Cookie: logined=true; Path=/`를 넣고 `/index.html`로 리다이렉트하기
+- [x] 로그인 실패 시 `/user/login_failed.html`로 리다이렉트하기
 - [ ] 요청의 Cookie에서 `logined` 값을 확인해 사용자 목록 접근을 제어하기
 - [ ] CSS 요청에 `Content-Type: text/css`와 파일 내용을 반환하기
 

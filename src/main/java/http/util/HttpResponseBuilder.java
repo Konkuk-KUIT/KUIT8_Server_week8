@@ -6,7 +6,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -14,6 +13,9 @@ import java.util.logging.Logger;
 
 public class HttpResponseBuilder {
     public record HttpResponse(StautsLine stautsLine, Map<String, String> headers, byte[] body) {
+        public void addHeader(String key, String value){
+            headers.put(key, value);
+        }
     }
 
     public record StautsLine(String version, String code, String message) {
@@ -48,24 +50,28 @@ public class HttpResponseBuilder {
 
     public static HttpResponse response200(String parsedPath) throws IOException {
         StautsLine stautsLine = new StautsLine("HTTP/1.1", "200", "OK");
+        Map<String, String> headers = new HashMap<>();
         byte[] body = Files.readAllBytes(Path.of(parsedPath));
 
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "text/html;charset=utf-8");
-        headers.put("Content-Length", String.valueOf(body.length));
+        HttpResponse httpResponse = new HttpResponse(stautsLine, headers, body);
 
-        return new HttpResponse(stautsLine, headers, body);
+        httpResponse.addHeader("Content-Type", "text/html; charset=utf-8");
+        httpResponse.addHeader("Content-Length", String.valueOf(body.length));
+
+        return httpResponse;
     }
 
     public static HttpResponse response302(String parsedPath) throws IOException {
         StautsLine stautsLine = new StautsLine("HTTP/1.1", "302", "FOUND");
+        Map<String, String> headers = new HashMap<>();
         byte[] body = new byte[0];
 
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "text/html;charset=utf-8");
-        headers.put("Content-Length", String.valueOf(body.length));
-        headers.put("Location", parsedPath);
+        HttpResponse httpResponse = new HttpResponse(stautsLine, headers, body);
 
-        return new HttpResponse(stautsLine, headers, body);
+        httpResponse.addHeader("Content-Type", "text/html; charset=utf-8");
+        httpResponse.addHeader("Content-Length", String.valueOf(body.length));
+        httpResponse.addHeader("Location", parsedPath);
+
+        return httpResponse;
     }
 }

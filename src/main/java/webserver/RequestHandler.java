@@ -8,8 +8,6 @@ import http.util.HttpResponseBuilder;
 
 import java.io.*;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -47,8 +45,20 @@ public class RequestHandler implements Runnable{
                 String name = parameters.get("name");
                 String email = parameters.get("email");
 
-                memoryUserController.GetSignUp(userId, password, name, email);
+                memoryUserController.signup(userId, password, name, email);
                 httpResponse = HttpResponseBuilder.response302("/index.html");
+            }else if(httpRequest.requestLine().path().equals("/user/login") && method.equals("POST")){
+                String userId = parameters.get("userId");
+                String password = parameters.get("password");
+
+                boolean loginResult = memoryUserController.login(userId, password);
+                if(loginResult) {
+                    httpResponse = HttpResponseBuilder.response302("/index.html");
+                    httpResponse.addHeader("Set-Cookie", "logined=true");
+                    httpResponse.addHeader("Path", "/");
+                }else{
+                    httpResponse = HttpResponseBuilder.response302("login_failed.html");
+                }
             }else{
                 httpResponse = HttpResponseBuilder.response200(parsedPath);
             }

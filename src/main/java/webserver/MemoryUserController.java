@@ -6,6 +6,7 @@ import model.User;
 public class MemoryUserController {
 
     private static final MemoryUserController INSTANCE = new MemoryUserController();
+    MemoryUserRepository memoryUserRepository =  MemoryUserRepository.getInstance();
     private MemoryUserController() {
     }
 
@@ -13,15 +14,19 @@ public class MemoryUserController {
         return INSTANCE;
     }
 
-    public void GetSignUp(
+    public void signup(
             String userId,
             String password,
             String name,
             String email
     ){
         User user = new User(userId, password, name, email);
-        MemoryUserRepository memoryUserRepository = MemoryUserRepository.getInstance();
-
         memoryUserRepository.addUser(user);
+    }
+
+    public boolean login(String userId, String password) {
+        User user = memoryUserRepository.findUserById(userId);
+        if(user == null || !user.getPassword().equals(password)) return false;
+        return true;
     }
 }
