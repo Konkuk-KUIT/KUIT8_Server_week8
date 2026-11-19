@@ -49,7 +49,7 @@ public class HttpResponseBuilder {
     }
 
     public static HttpResponse response200(String parsedPath) throws IOException {
-        StautsLine stautsLine = new StautsLine("HTTP/1.1", "200", "OK");
+        StautsLine stautsLine = new StautsLine("HTTP/1.1", "200", HttpStatusCode.OK.toString());
         Map<String, String> headers = new HashMap<>();
         byte[] body = Files.readAllBytes(Path.of(parsedPath));
 
@@ -70,7 +70,7 @@ public class HttpResponseBuilder {
     }
 
     public static HttpResponse response302(String parsedPath) throws IOException {
-        StautsLine stautsLine = new StautsLine("HTTP/1.1", "302", "FOUND");
+        StautsLine stautsLine = new StautsLine("HTTP/1.1", "302", HttpStatusCode.MOVED.toString());
         Map<String, String> headers = new HashMap<>();
         byte[] body = new byte[0];
 
