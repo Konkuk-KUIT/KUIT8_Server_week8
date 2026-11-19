@@ -114,7 +114,7 @@ public class RequestHandler implements Runnable{
                 );
                 MemoryUserRepository.getInstance().addUser(user);
 
-                response302Header(dos,"index.html",null);
+                response302Header(dos,"/index.html",null);
                 return;
 
 
@@ -138,11 +138,18 @@ public class RequestHandler implements Runnable{
             if ("GET".equals(method) && ("/user/userList".equals(requestPath) || "/user/list.html".equals(requestPath))){
                 if (isLoggedIn(br)) {
                     byte[] body = Files.readAllBytes(Path.of("webapp", "user", "list.html"));
-                    response200Header(dos, body.length);
+                    response200Header(dos, body.length,"text/html");
                     responseBody(dos, body);
                 } else {
                     response302Header(dos, "/user/login.html", null);
                 }
+                return;
+            }
+
+            if ("GET".equals(method) && "/css/styles.css".equals(requestPath)){
+                byte[] body = Files.readAllBytes(Path.of("webapp", "css", "styles.css"));
+                response200Header(dos, body.length,"text/css");
+                responseBody(dos, body);
                 return;
             }
 
@@ -151,17 +158,17 @@ public class RequestHandler implements Runnable{
 
             if(pathDet.length==0){
                 byte[] body = Files.readAllBytes(Path.of("webapp", "index.html"));
-                response200Header(dos, body.length);
+                response200Header(dos, body.length,"text/html");
                 responseBody(dos, body);
             }
             if(pathDet.length==2){
                 byte[] body = Files.readAllBytes(Path.of("webapp", pathDet[1]));
-                response200Header(dos, body.length);
+                response200Header(dos, body.length,"text/html");
                 responseBody(dos, body);
             }
             else if(pathDet.length==3){
                 byte[] body = Files.readAllBytes(Path.of("webapp", pathDet[1], pathDet[2]));
-                response200Header(dos, body.length);
+                response200Header(dos, body.length,"text/html");
                 responseBody(dos, body);
             }
 
@@ -170,10 +177,10 @@ public class RequestHandler implements Runnable{
         }
     }
 
-    private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
+    private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String cType) {
         try {
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            dos.writeBytes("Content-Type: "+cType+";charset=utf-8\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("\r\n");
         } catch (IOException e) {
