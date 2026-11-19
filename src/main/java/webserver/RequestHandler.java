@@ -45,6 +45,29 @@ public class RequestHandler implements Runnable{
         return HttpRequestUtils.parseQueryParameter(body);
     }
 
+    private boolean isLoggedIn(BufferedReader br) throws IOException {
+        boolean loggedIn = false;
+        String line;
+
+        while ((line = br.readLine()) != null && !line.isEmpty()) {
+            String[] header = line.split(":", 2);
+
+            if (header.length == 2 && "Cookie".equalsIgnoreCase(header[0])) {
+                for (String cookie : header[1].split(";")) {
+                    String[] pair = cookie.trim().split("=", 2);
+
+                    if (pair.length == 2
+                            && "logined".equals(pair[0].trim())
+                            && "true".equals(pair[1].trim())) {
+                        loggedIn = true;
+                    }
+                }
+            }
+        }
+
+        return line != null && loggedIn;
+    }
+
     @Override
     public void run() {
         log.log(Level.INFO, "New Client Connect! Connected IP : " + connection.getInetAddress() + ", Port : " + connection.getPort());
@@ -109,6 +132,17 @@ public class RequestHandler implements Runnable{
                     response302Header(dos,"/index.html", "logined=true; Path=/");
                 }
 
+                return;
+            }
+
+            if ("GET".equals(method) && ("/user/userList".equals(requestPath) || "/user/list.html".equals(requestPath))){
+                if (isLoggedIn(br)) {
+                    byte[] body = Files.readAllBytes(Path.of("webapp", "user", "list.html"));
+                    response200Header(dos, body.length);
+                    responseBody(dos, body);
+                } else {
+                    response302Header(dos, "/user/login.html", null);
+                }
                 return;
             }
 
