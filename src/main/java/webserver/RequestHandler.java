@@ -55,6 +55,39 @@ public class RequestHandler implements Runnable{
                 return;
             }
 
+            if ("POST".equals(method) && "/user/signup".equals(requestPath)) {
+                int contentLength = -1;
+                String header;
+
+                while ((header=br.readLine()) != null && !header.isEmpty()) {
+                    String[] targetHeader = header.split(":", 2);
+
+                    if (targetHeader.length == 2 && "Content-Length".equalsIgnoreCase(targetHeader[0])) {
+                        contentLength = Integer.parseInt(targetHeader[1].trim());
+                    }
+                }
+
+                if (header == null || contentLength <= 0) {
+                    return;
+                }
+
+                String body = IOUtils.readData(br, contentLength);
+                Map<String, String> params = HttpRequestUtils.parseQueryParameter(body);
+
+                User user = new User(
+                        params.get("userId"),
+                        params.get("password"),
+                        params.get("name"),
+                        params.get("email")
+                );
+                MemoryUserRepository.getInstance().addUser(user);
+
+                response302Header(dos);
+                return;
+
+
+            }
+
             //요구사항 1
             String[] pathDet=parts[1].split("/");
 
@@ -84,6 +117,18 @@ public class RequestHandler implements Runnable{
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
             dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.log(Level.SEVERE, e.getMessage());
+        }
+    }
+
+    private void response302Header(DataOutputStream dos) {
+        try {
+            dos.writeBytes("HTTP/1.1 302 Found \r\n");
+            dos.writeBytes("Location: /index.html \r\n");
+            dos.writeBytes("Content-Length: 0 \r\n");
+            dos.writeBytes("Connection: close \r\n");
             dos.writeBytes("\r\n");
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
