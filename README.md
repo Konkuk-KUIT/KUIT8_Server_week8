@@ -110,7 +110,7 @@ webapp/         # 실습용 HTML, CSS, JavaScript, 이미지
 - [x] 로그인 성공 응답에 `Set-Cookie: logined=true; Path=/`를 넣고 `/index.html`로 리다이렉트하기
 - [x] 로그인 실패 시 `/user/login_failed.html`로 리다이렉트하기
 - [x] 요청의 Cookie에서 `logined` 값을 확인해 사용자 목록 접근을 제어하기
-- [ ] CSS 요청에 `Content-Type: text/css`와 파일 내용을 반환하기
+- [x] CSS 요청에 `Content-Type: text/css`와 파일 내용을 반환하기
 
 GET 회원가입을 먼저 구현한 뒤 POST로 전환합니다. **최종 제출 폼은 POST**이며, GET 회원가입 처리의 최종 유지 여부는 필수가 아닙니다.
 
