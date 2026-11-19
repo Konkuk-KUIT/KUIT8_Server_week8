@@ -21,6 +21,30 @@ public class RequestHandler implements Runnable{
         this.connection = connection;
     }
 
+    private Map<String, String> readFormParams(BufferedReader br) throws IOException {
+        int contentLength = -1;
+        String headerLine;
+
+        while ((headerLine = br.readLine()) != null && !headerLine.isEmpty()) {
+            String[] header = headerLine.split(":", 2);
+
+            if (header.length == 2 && "Content-Length".equalsIgnoreCase(header[0])) {
+                try {
+                    contentLength = Integer.parseInt(header[1].trim());
+                } catch (NumberFormatException e) {
+                    throw new IOException("Invalid Content-Length", e);
+                }
+            }
+        }
+
+        if (headerLine == null || contentLength <= 0) {
+            throw new IOException("Missing or empty form body");
+        }
+
+        String body = IOUtils.readData(br, contentLength);
+        return HttpRequestUtils.parseQueryParameter(body);
+    }
+
     @Override
     public void run() {
         log.log(Level.INFO, "New Client Connect! Connected IP : " + connection.getInetAddress() + ", Port : " + connection.getPort());
@@ -55,24 +79,9 @@ public class RequestHandler implements Runnable{
                 return;
             }
 
+            //요구사항3,4
             if ("POST".equals(method) && "/user/signup".equals(requestPath)) {
-                int contentLength = -1;
-                String header;
-
-                while ((header=br.readLine()) != null && !header.isEmpty()) {
-                    String[] targetHeader = header.split(":", 2);
-
-                    if (targetHeader.length == 2 && "Content-Length".equalsIgnoreCase(targetHeader[0])) {
-                        contentLength = Integer.parseInt(targetHeader[1].trim());
-                    }
-                }
-
-                if (header == null || contentLength <= 0) {
-                    return;
-                }
-
-                String body = IOUtils.readData(br, contentLength);
-                Map<String, String> params = HttpRequestUtils.parseQueryParameter(body);
+                Map<String, String> params = readFormParams(br);
 
                 User user = new User(
                         params.get("userId"),
@@ -82,10 +91,25 @@ public class RequestHandler implements Runnable{
                 );
                 MemoryUserRepository.getInstance().addUser(user);
 
-                response302Header(dos);
+                response302Header(dos,"index.html",null);
                 return;
 
 
+            }
+
+            if ("POST".equals(method) && "/user/login".equals(requestPath)){
+                Map<String, String> queries = readFormParams(br);
+                String userId = queries.get("userId");
+                String password = queries.get("password");
+                User user = MemoryUserRepository.getInstance().findUserById(userId);
+                if (user == null || !user.getPassword().equals(password)) {
+                    response302Header(dos,"/user/login_failed.html",null);
+                }
+                else{
+                    response302Header(dos,"/index.html", "logined=true; Path=/");
+                }
+
+                return;
             }
 
             //요구사항 1
@@ -123,10 +147,13 @@ public class RequestHandler implements Runnable{
         }
     }
 
-    private void response302Header(DataOutputStream dos) {
+    private void response302Header(DataOutputStream dos,String location, String cookie) {
         try {
             dos.writeBytes("HTTP/1.1 302 Found \r\n");
-            dos.writeBytes("Location: /index.html \r\n");
+            dos.writeBytes("Location: "+location+"\r\n");
+            if (cookie != null) {
+                dos.writeBytes("Set-Cookie: " + cookie + "\r\n");
+            }
             dos.writeBytes("Content-Length: 0 \r\n");
             dos.writeBytes("Connection: close \r\n");
             dos.writeBytes("\r\n");
