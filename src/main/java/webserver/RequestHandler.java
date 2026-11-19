@@ -59,6 +59,13 @@ public class RequestHandler implements Runnable{
                 }else{
                     httpResponse = HttpResponseBuilder.response302("login_failed.html");
                 }
+            }else if(httpRequest.requestLine().path().equals("/user/userList")) {
+                if(httpRequest.headers().containsKey("Cookie") && httpRequest.headers().get("Cookie").contains("logined=true")) {
+                    httpResponse = HttpResponseBuilder.response302("list.html");
+                }
+                else {
+                    httpResponse = HttpResponseBuilder.response302("login.html");
+                }
             }else{
                 httpResponse = HttpResponseBuilder.response200(parsedPath);
             }
