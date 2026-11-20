@@ -25,7 +25,7 @@ public class HttpRequestUtils {
             }
             String[] pair = parameter.split("=", 2);
             String key = URLDecoder.decode(pair[0], StandardCharsets.UTF_8);
-            String value = pair.length == 2
+            String value = pair.length == 2 
                     ? URLDecoder.decode(pair[1], StandardCharsets.UTF_8) : "";
             if (key.isEmpty()) {
                 throw new IllegalArgumentException("Parameter names must not be empty");
