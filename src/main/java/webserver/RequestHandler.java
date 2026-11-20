@@ -1,5 +1,6 @@
 package webserver;
 
+import http.util.HttpMethod;
 import http.util.HttpRequestUtils;
 import http.util.HttpRequestParser;
 import http.util.HttpRequestParser.PathParserResult;
@@ -32,14 +33,14 @@ public class RequestHandler implements Runnable{
             PathParserResult pathParserResult = HttpRequestParser.pathParser(httpRequest.requestLine().path());
 
             String parsedPath = routingPath(pathParserResult.path());
-            String method = httpRequest.requestLine().method();
+            HttpMethod method = httpRequest.requestLine().method();
             Map<String, String> parameters = HttpRequestUtils.parseQueryParameter(
-                    method.equals("GET") ? pathParserResult.queryString() : httpRequest.body()
+                    method == HttpMethod.GET ? pathParserResult.queryString() : httpRequest.body()
                     );
 
             HttpResponse httpResponse = null;
 
-            if(httpRequest.requestLine().path().equals("/user/signup") && method.equals("POST")) {
+            if(httpRequest.requestLine().path().equals("/user/signup") && method == HttpMethod.GET) {
                 String userId = parameters.get("userId");
                 String password = parameters.get("password");
                 String name = parameters.get("name");
@@ -47,7 +48,7 @@ public class RequestHandler implements Runnable{
 
                 memoryUserController.signup(userId, password, name, email);
                 httpResponse = HttpResponseBuilder.response302("/index.html");
-            }else if(httpRequest.requestLine().path().equals("/user/login") && method.equals("POST")){
+            }else if(httpRequest.requestLine().path().equals("/user/login") && method == HttpMethod.POST) {
                 String userId = parameters.get("userId");
                 String password = parameters.get("password");
 

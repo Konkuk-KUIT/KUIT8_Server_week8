@@ -14,7 +14,7 @@ public class HttpRequestParser {
     public record HttpRequest(RequestLine requestLine, Map<String, String> headers, String body) {
     }
 
-    public record RequestLine(String method, String path, String version){
+    public record RequestLine(HttpMethod method, String path, String version){
     }
 
     public record PathParserResult(String path, String queryString) {
@@ -42,7 +42,7 @@ public class HttpRequestParser {
         if(requestLine.isBlank()) throw new IOException("requestLine이 비어있습니다.");
 
         String[] parts = requestLine.split(" ");
-        return new RequestLine(parts[0], parts[1], parts[2]);
+        return new RequestLine(HttpMethod.valueOf(parts[0]), parts[1], parts[2]);
     }
 
     public static PathParserResult pathParser(String path) throws IOException {
