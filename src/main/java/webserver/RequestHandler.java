@@ -1,16 +1,12 @@
 package webserver;
 
 import db.MemoryUserRepository;
-import http.util.HttpRequestUtils;
-import http.util.IOUtils;
 import model.User;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -31,43 +27,33 @@ public class RequestHandler implements Runnable {
                 + connection.getInetAddress() + ", Port : " + connection.getPort());
 
         try (Socket socket = connection;
-             BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-             DataOutputStream dos = new DataOutputStream(socket.getOutputStream())) {
-
-            String requestLine = br.readLine();
-            if (requestLine == null) {
+             BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+            HttpRequest request = HttpRequest.from(br);
+            if (request == null) {
                 return;
             }
 
-            String[] parts = requestLine.split(" ", 3);
-            if (parts.length != 3) {
+            HttpResponse response = new HttpResponse(socket.getOutputStream());
+            HttpMethod method = request.method();
+            String path = request.path();
+
+            if (method == HttpMethod.POST && path.equals("/user/signup")) {
+                signup(request.form(), response);
                 return;
             }
 
-            String method = parts[0];
-            String path = parts[1];
-
-            if (method.equals("POST") && path.equals("/user/signup")) {
-                signup(br, dos);
+            if (method == HttpMethod.POST && path.equals("/user/login")) {
+                login(request.form(), response);
                 return;
             }
 
-            if (method.equals("POST") && path.equals("/user/login")) {
-                login(br, dos);
+            if (method != HttpMethod.GET) {
                 return;
             }
 
-            if (!method.equals("GET")) {
-                return;
-            }
-
-            if ((path.equals("/user/userList") || path.equals("/user/list.html")) && !isLoggedIn(br)) {
-                dos.writeBytes("HTTP/1.1 302 Found\r\n");
-                dos.writeBytes("Location: /user/login.html\r\n");
-                dos.writeBytes("Content-Length: 0\r\n");
-                dos.writeBytes("Connection: close\r\n");
-                dos.writeBytes("\r\n");
-                dos.flush();
+            if ((path.equals("/user/userList") || path.equals("/user/list.html"))
+                    && !isLoggedIn(request.header("Cookie"))) {
+                response.redirect("/user/login.html");
                 return;
             }
 
@@ -81,22 +67,16 @@ public class RequestHandler implements Runnable {
                 default -> null;
             };
 
-            if (file == null) {
-                return;
+            if (file != null) {
+                response.forward(file);
             }
-
-            byte[] body = Files.readAllBytes(file);
-            String contentType = path.equals("/css/styles.css") ? "text/css" : "text/html";
-            response200Header(dos, body.length, contentType);
-            responseBody(dos, body);
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
         }
     }
 
-    private void signup(BufferedReader br, DataOutputStream dos) throws IOException {
-        Map<String, String> params = readForm(br);
-        if (params == null || !params.keySet().containsAll(List.of("userId", "password", "name", "email"))) {
+    private void signup(Map<String, String> params, HttpResponse response) throws IOException {
+        if (!params.keySet().containsAll(List.of("userId", "password", "name", "email"))) {
             return;
         }
 
@@ -107,89 +87,32 @@ public class RequestHandler implements Runnable {
                 params.get("email")
         );
         MemoryUserRepository.getInstance().addUser(user);
-
-        dos.writeBytes("HTTP/1.1 302 Found\r\n");
-        dos.writeBytes("Location: /index.html\r\n");
-        dos.writeBytes("Content-Length: 0\r\n");
-        dos.writeBytes("Connection: close\r\n");
-        dos.writeBytes("\r\n");
-        dos.flush();
+        response.redirect("/index.html");
     }
 
-    private Map<String, String> readForm(BufferedReader br) throws IOException {
-        int contentLength = -1;
-        String header;
-
-        try {
-            while ((header = br.readLine()) != null && !header.isEmpty()) {
-                String[] fields = header.split(":", 2);
-                if (fields.length == 2 && fields[0].equalsIgnoreCase("Content-Length")) {
-                    contentLength = Integer.parseInt(fields[1].trim());
-                }
-            }
-
-            if (header == null || contentLength <= 0) {
-                return null;
-            }
-
-            String formBody = IOUtils.readData(br, contentLength);
-            return HttpRequestUtils.parseQueryParameter(formBody);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    private void login(BufferedReader br, DataOutputStream dos) throws IOException {
-        Map<String, String> params = readForm(br);
-        if (params == null) {
-            return;
-        }
-
+    private void login(Map<String, String> params, HttpResponse response) throws IOException {
         String userId = params.get("userId");
         String password = params.get("password");
         User user = userId == null ? null : MemoryUserRepository.getInstance().findUserById(userId);
-        boolean success = user != null && user.getPassword().equals(password);
 
-        dos.writeBytes("HTTP/1.1 302 Found\r\n");
-        if (success) {
-            dos.writeBytes("Location: /index.html\r\n");
-            dos.writeBytes("Set-Cookie: logined=true; Path=/\r\n");
+        if (user != null && user.getPassword().equals(password)) {
+            response.redirect("/index.html", "logined=true; Path=/");
         } else {
-            dos.writeBytes("Location: /user/login_failed.html\r\n");
+            response.redirect("/user/login_failed.html");
         }
-        dos.writeBytes("Content-Length: 0\r\n");
-        dos.writeBytes("Connection: close\r\n");
-        dos.writeBytes("\r\n");
-        dos.flush();
     }
 
-    private boolean isLoggedIn(BufferedReader br) throws IOException {
-        String header;
-        while ((header = br.readLine()) != null && !header.isEmpty()) {
-            String[] fields = header.split(":", 2);
-            if (fields.length == 2 && fields[0].equalsIgnoreCase("Cookie")) {
-                for (String cookie : fields[1].split(";")) {
-                    if (cookie.trim().equals("logined=true")) {
-                        return true;
-                    }
-                }
+    private boolean isLoggedIn(String cookieHeader) {
+        if (cookieHeader == null) {
+            return false;
+        }
+
+        for (String cookie : cookieHeader.split(";")) {
+            if (cookie.trim().equals("logined=true")) {
+                return true;
             }
         }
+
         return false;
-    }
-
-    private void response200Header(
-            DataOutputStream dos, int lengthOfBodyContent, String contentType
-    ) throws IOException {
-        dos.writeBytes("HTTP/1.1 200 OK\r\n");
-        dos.writeBytes("Content-Type: " + contentType + "; charset=UTF-8\r\n");
-        dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-        dos.writeBytes("Connection: close\r\n");
-        dos.writeBytes("\r\n");
-    }
-
-    private void responseBody(DataOutputStream dos, byte[] body) throws IOException {
-        dos.write(body);
-        dos.flush();
     }
 }
