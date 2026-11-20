@@ -1,3 +1,5 @@
+//8080번을 열고 브라우저를 메서드에 넘김
+
 package webserver;
 
 import java.io.IOException;
