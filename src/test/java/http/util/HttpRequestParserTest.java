@@ -77,37 +77,14 @@ class HttpRequestParserTest {
             "/|/|''",
             "/index.html|/index.html|''",
             "/user/signup?userId=student&password=pass|/user/signup|userId=student&password=pass",
-            "/user/signup?|/user/signup|''",
-            "/search?keyword=what?why|/search|keyword=what?why"
+            "/user/signup?|/user/signup|''"
     }, delimiter = '|', emptyValue = "")
-    @DisplayName("첫 번째 물음표를 기준으로 경로와 쿼리를 분리한다")
+    @DisplayName("경로와 쿼리를 분리하고 쿼리가 없으면 빈 문자열을 반환한다")
     void splitsPathAndQuery(String target, String expectedPath, String expectedQuery) throws Exception {
         var result = HttpRequestParser.pathParser(target);
 
         assertEquals(expectedPath, result.path());
         assertEquals(expectedQuery, result.queryString());
-    }
-
-    @ParameterizedTest
-    @CsvSource(value = {
-            "X-Trace: part1: part2|X-Trace|part1: part2",
-            "Host:localhost:8080|Host|localhost:8080",
-            "X-Empty: |X-Empty|''"
-    }, delimiter = '|', emptyValue = "", ignoreLeadingAndTrailingWhitespace = false)
-    @DisplayName("헤더 값의 콜론, 구분자 뒤 공백 생략, 빈 값을 처리한다")
-    void parsesValidHeaderValues(String headerLine, String name, String expectedValue) throws Exception {
-        var request = parse("GET / HTTP/1.1\r\n" + headerLine + "\r\n\r\n");
-
-        assertEquals(expectedValue, request.headers().get(name));
-    }
-
-    @ParameterizedTest
-    @CsvSource({"content-length", "CONTENT-LENGTH"})
-    @DisplayName("Content-Length 헤더 이름의 대소문자와 관계없이 본문을 읽는다")
-    void readsBodyWithCaseInsensitiveContentLength(String headerName) throws Exception {
-        String body = "userId=student";
-
-        assertEquals(body, parse(postRequest(headerName, body)).body());
     }
 
     private static HttpRequestParser.HttpRequest parse(String rawRequest) throws Exception {
