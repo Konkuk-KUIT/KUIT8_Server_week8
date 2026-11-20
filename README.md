@@ -101,16 +101,16 @@ webapp/         # 실습용 HTML, CSS, JavaScript, 이미지
 
 먼저 `RequestHandler.run()`에서 동작을 완성합니다.
 
-- [ ] `/`, `/index.html` 요청에 `webapp/index.html` 반환하기
-- [ ] 요청에 따라 다른 HTML 파일도 반환하기
-- [ ] GET 회원가입: 쿼리 문자열로부터 User를 생성하고 저장하기
-- [ ] POST 회원가입: 폼의 method를 post로 바꾸고 본문으로부터 User를 생성하고 저장하기
-- [ ] 회원가입 성공 시 302 응답으로 `/index.html`에 리다이렉트하기
-- [ ] 아이디로 사용자를 조회하고 비밀번호를 비교하여 로그인 성공·실패 처리하기
-- [ ] 로그인 성공 응답에 `Set-Cookie: logined=true; Path=/`를 넣고 `/index.html`로 리다이렉트하기
-- [ ] 로그인 실패 시 `/user/login_failed.html`로 리다이렉트하기
-- [ ] 요청의 Cookie에서 `logined` 값을 확인해 사용자 목록 접근을 제어하기
-- [ ] CSS 요청에 `Content-Type: text/css`와 파일 내용을 반환하기
+- [x] `/`, `/index.html` 요청에 `webapp/index.html` 반환하기
+- [x] 요청에 따라 다른 HTML 파일도 반환하기
+- [x] GET 회원가입: 쿼리 문자열로부터 User를 생성하고 저장하기
+- [x] POST 회원가입: 폼의 method를 post로 바꾸고 본문으로부터 User를 생성하고 저장하기
+- [x] 회원가입 성공 시 302 응답으로 `/index.html`에 리다이렉트하기
+- [x] 아이디로 사용자를 조회하고 비밀번호를 비교하여 로그인 성공·실패 처리하기
+- [x] 로그인 성공 응답에 `Set-Cookie: logined=true; Path=/`를 넣고 `/index.html`로 리다이렉트하기
+- [x] 로그인 실패 시 `/user/login_failed.html`로 리다이렉트하기
+- [x] 요청의 Cookie에서 `logined` 값을 확인해 사용자 목록 접근을 제어하기
+- [x] CSS 요청에 `Content-Type: text/css`와 파일 내용을 반환하기
 
 GET 회원가입을 먼저 구현한 뒤 POST로 전환합니다. **최종 제출 폼은 POST**이며, GET 회원가입 처리의 최종 유지 여부는 필수가 아닙니다.
 
@@ -144,12 +144,12 @@ GET 회원가입을 먼저 구현한 뒤 POST로 전환합니다. **최종 제�
 
 ## 2단계 — 객체지향 리팩토링
 
-- [ ] HTTP 메서드, 상태 코드 등 반복되는 상수를 Enum으로 정리하기
-- [ ] `HttpRequest`로 요청 분석 책임을 분리하고 정적 팩토리 메서드 활용하기
-- [ ] `HttpResponse`로 응답 생성 책임 분리하기
-- [ ] `forward(path)`와 `redirect(path)` 구현하기
-- [ ] 요청 분석 및 응답 생성 테스트 작성하기
-- [ ] 리팩토링 후에도 1단계 기능이 유지되는지 확인하기
+- [x] HTTP 메서드, 상태 코드 등 반복되는 상수를 Enum으로 정리하기
+- [x] `HttpRequest`로 요청 분석 책임을 분리하고 정적 팩토리 메서드 활용하기
+- [x] `HttpResponse`로 응답 생성 책임 분리하기
+- [x] `forward(path)`와 `redirect(path)` 구현하기
+- [x] 요청 분석 및 응답 생성 테스트 작성하기
+- [x] 리팩토링 후에도 1단계 기능이 유지되는지 확인하기
 
 테스트 코드는 `src/test/java`에 작성합니다. 요청 예제 파일이 필요하면 `src/test/resources`에 두고 클래스패스로 읽습니다. 본인 컴퓨터의 절대 경로를 테스트에 넣지 마세요.
 
