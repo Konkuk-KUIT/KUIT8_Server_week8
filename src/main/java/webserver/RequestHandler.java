@@ -1,9 +1,15 @@
 package webserver;
 
+import db.MemoryUserRepository;
+import http.HttpRequest;
+import http.HttpResponse;
+import model.User;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 
 public class RequestHandler implements Runnable{
     Socket connection;
@@ -18,35 +24,55 @@ public class RequestHandler implements Runnable{
         log.log(Level.INFO, "New Client Connect! Connected IP : " + connection.getInetAddress() + ", Port : " + connection.getPort());
         try (InputStream in = connection.getInputStream(); OutputStream out = connection.getOutputStream()){
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
-            DataOutputStream dos = new DataOutputStream(out);
+            HttpRequest request = HttpRequest.from(br);
+            if (request == null) {
+                return;
+            }
+            HttpResponse response = new HttpResponse(out);
 
-            byte[] body = "Hello World".getBytes();
-            response200Header(dos, body.length);
-            responseBody(dos, body);
+            String path = request.getPath();
+            if (path.equals("/")) {
+                path = "/index.html";
+            }
 
-        } catch (IOException e) {
-            log.log(Level.SEVERE,e.getMessage());
-        }
-    }
+            if (path.equals("/user/signup")) {
+                User user = new User(request.getParameter("userId"), request.getParameter("password"),
+                        request.getParameter("name"), request.getParameter("email"));
+                MemoryUserRepository.getInstance().addUser(user);
+                response.redirect("/index.html");
+                return;
+            }
 
-    private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
-        try {
-            dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-            dos.writeBytes("\r\n");
+            if (path.equals("/user/login")) {
+                User user = MemoryUserRepository.getInstance().findUserById(request.getParameter("userId"));
+                if (user != null && user.getPassword().equals(request.getParameter("password"))) {
+                    response.redirect("/index.html", "logined=true; Path=/");
+                } else {
+                    response.redirect("/user/login_failed.html");
+                }
+                return;
+            }
+
+            if (path.equals("/user/userList") || path.equals("/user/list.html")) {
+                boolean loggedIn = false;
+                for (String c : request.getHeader("Cookie").split(";")) {
+                    if (c.trim().equals("logined=true")) {
+                        loggedIn = true;
+                    }
+                }
+                if (!loggedIn) {
+                    response.redirect("/user/login.html");
+                    return;
+                }
+                path = "/user/list.html";
+            }
+
+            response.forward(path);
+
         } catch (IOException e) {
             log.log(Level.SEVERE, e.getMessage());
         }
     }
-
-    private void responseBody(DataOutputStream dos, byte[] body) {
-        try {
-            dos.write(body, 0, body.length);
-            dos.flush();
-        } catch (IOException e) {
-            log.log(Level.SEVERE, e.getMessage());
-        }
-    }
-
 }
+
+
