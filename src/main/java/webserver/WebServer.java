@@ -30,6 +30,5 @@ public class WebServer {
                 service.submit(new RequestHandler(connection));
             }
         }
-
     }
 }

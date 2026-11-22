@@ -21,8 +21,6 @@ public class MemoryUserRepository implements Repository{
 
     public void addUser(User user) {
         Objects.requireNonNull(user, "user");
-        // Reusing an ID replaces the stored user; duplicate-registration validation
-        // is not part of this repository's contract.
         users.put(Objects.requireNonNull(user.getUserId(), "userId"), user);
     }
 
@@ -31,7 +29,6 @@ public class MemoryUserRepository implements Repository{
     }
 
     public Collection<User> findAll() {
-        // Return a detached, unmodifiable collection rather than a live map view.
         return List.copyOf(users.values());
     }
 }
