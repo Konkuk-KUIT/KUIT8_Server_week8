@@ -6,13 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class HttpRequestUtils {
-    /**
-     * Parses a query string (without '?') or an application/x-www-form-urlencoded body.
-     * Decode only after splitting: encoded '&' and '=' may be part of a value.
-     * Null/empty input produces an empty map; missing '=' means an empty value.
-     * Empty segments are ignored. Empty keys, duplicate decoded keys and malformed
-     * percent escapes are rejected with IllegalArgumentException.
-     */
+    // query parameter 처리하는 method
     public static Map<String, String> parseQueryParameter(String queryString) {
         Map<String, String> parameters = new LinkedHashMap<>();
         if (queryString == null || queryString.isEmpty()) {
