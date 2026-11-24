@@ -1,9 +1,16 @@
 package webserver;
 
+import http.HttpMethod;
+import http.ContentType;
+
 import java.io.*;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 
 public class RequestHandler implements Runnable{
     Socket connection;
@@ -20,33 +27,23 @@ public class RequestHandler implements Runnable{
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
             DataOutputStream dos = new DataOutputStream(out);
 
-            byte[] body = "Hello World".getBytes();
-            response200Header(dos, body.length);
-            responseBody(dos, body);
+            //요청 객체
+            HttpRequest request = new HttpRequest(br);
+
+            //응답 객체
+            HttpResponse response = new HttpResponse(dos);
+            RequestMapper.getController(request.getUrl()).execute(request, response);
 
         } catch (IOException e) {
             log.log(Level.SEVERE,e.getMessage());
         }
     }
 
-    private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
-        try {
-            dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-            dos.writeBytes("\r\n");
-        } catch (IOException e) {
-            log.log(Level.SEVERE, e.getMessage());
-        }
-    }
 
-    private void responseBody(DataOutputStream dos, byte[] body) {
-        try {
-            dos.write(body, 0, body.length);
-            dos.flush();
-        } catch (IOException e) {
-            log.log(Level.SEVERE, e.getMessage());
-        }
-    }
+
+
+
+
+
 
 }
